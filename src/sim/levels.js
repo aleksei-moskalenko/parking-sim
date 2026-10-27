@@ -12,7 +12,8 @@ export const PARALLEL_LEVELS = [
   { margin: 1.5, side: 'right', oppositeRow: true, freeWidth: 4.5 },
   { margin: 1.1, side: 'left', oppositeRow: true, freeWidth: 4.0 },
   { margin: 0.9, side: 'right', oppositeRow: true, freeWidth: 3.6 },
-  { margin: 0.7, side: 'left', oppositeRow: true, freeWidth: 3.3 },
+  // Master: spec started at 0.7 m; the solver could not park the minivan, 0.8 m is the smallest passable.
+  { margin: 0.8, side: 'left', oppositeRow: true, freeWidth: 3.3 },
 ];
 
 export const GARAGE_LEVELS = [
@@ -21,7 +22,8 @@ export const GARAGE_LEVELS = [
   { widthMargin: 0.7, depthMargin: 0.8, driveWidth: 6.5, opposite: 'cars' },
   { widthMargin: 0.5, depthMargin: 0.7, driveWidth: 5.5, opposite: 'cars' },
   { widthMargin: 0.35, depthMargin: 0.6, driveWidth: 5.0, opposite: 'cars' },
-  { widthMargin: 0.25, depthMargin: 0.5, driveWidth: 4.5, opposite: 'cars' },
+  // Master: spec started at a 4.5 m driveway; the minivan (5.1 m long) needs 5.0 m to turn in.
+  { widthMargin: 0.25, depthMargin: 0.5, driveWidth: 5.0, opposite: 'cars' },
 ];
 
 // Outer edge of the own parked row, metres from the curb line.

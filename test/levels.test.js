@@ -71,7 +71,7 @@ test('garage L6 minivan dims', () => {
   assert.equal(w.targetAxis, Math.PI / 2);
   assert.equal(w.curbLine, null);
   const across = Math.min(...w.obstacles.filter((o) => o.rect.cy > 0).map((o) => o.rect.cy - o.rect.width / 2));
-  near(across, 4.5, 1e-9);
+  near(across, 5.0, 1e-9);
 });
 
 test('garage target box is open, neighbours closed', () => {
@@ -80,4 +80,8 @@ test('garage target box is open, neighbours closed', () => {
   assert.ok(!w.obstacles.some((o) => rectsIntersect(o.rect, mouth)), 'target door open');
   const neighbourMouth = { ...mouth, cx: w.target.width + 0.2 };
   assert.ok(w.obstacles.some((o) => o.kind === 'wall' && rectsIntersect(o.rect, neighbourMouth)), 'neighbour closed');
+});
+
+test('Master parallel margin raised to 0.8 m by the feasibility check', () => {
+  near(buildLevel('parallel', 6, 'minivan').target.length, 5.10 + 0.8, 1e-9);
 });

@@ -6,7 +6,7 @@
   "description": "First-person parking trainer: parallel parking and reversing into a garage",
   "scripts": {
     "test": "node --test",
-    "test:levels": "node --test test/slow/",
+    "test:levels": "node --test slow-tests/levels-feasible.js",
     "start": "python3 -m http.server 8080"
   }
 }
