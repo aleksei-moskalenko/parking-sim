@@ -93,6 +93,9 @@ export class Run {
     this.onMouseMove = (e) => {
       if (document.pointerLockElement === this.canvas) applyMouse(this.head, e.movementX, e.movementY);
     };
+    this.onEscape = (e) => {
+      if (e.code === 'Escape' && this.state === 'running' && document.pointerLockElement !== this.canvas) this.pause();
+    };
     this.onLockChange = () => {
       if (document.pointerLockElement === this.canvas) this.resume();
       else if (this.state === 'running') this.pause();
@@ -100,6 +103,7 @@ export class Run {
     this.canvas.addEventListener('click', this.onClick);
     document.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('pointerlockchange', this.onLockChange);
+    window.addEventListener('keydown', this.onEscape);
 
     hud.show(true);
     ui.onReady(this);
@@ -145,6 +149,8 @@ export class Run {
 
   finish() {
     this.state = 'finished';
+    // Show the final placement from above; the result is already scored.
+    this.session.hints.top = true;
     this.input.releaseAll();
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.ui.onFinish(this);
@@ -205,6 +211,7 @@ export class Run {
     this.canvas.removeEventListener('click', this.onClick);
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('pointerlockchange', this.onLockChange);
+    window.removeEventListener('keydown', this.onEscape);
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.mirrors.dispose();
     disposeObject(this.scene);
