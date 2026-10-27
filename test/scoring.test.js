@@ -8,7 +8,8 @@ import { near } from './helpers.js';
 
 const S = CAR_SPECS.sedan;
 const at = (cx, cy, heading = 0) => createVehicle(S, poseFromBodyCenter(S, cx, cy, heading));
-const IDEAL_Y = 0.15 + 1.56 / 2 + 0.22 / 2;
+// Curb-side wheels' outer edges 15 cm from the curb.
+const IDEAL_Y = 0.15 + S.track / 2 + S.tireWidth / 2;
 const w1 = buildLevel('parallel', 1, 'sedan');
 const codes = (r) => r.faults.map((f) => f.code);
 

@@ -3,15 +3,18 @@
 // A-pillar foot so the driver sees them through the side windows.
 
 export const CAR_SPECS = {
+  // Škoda Octavia IV liftback. maxSteerDeg is the single-track equivalent
+  // (between the real inner ≈ 38–40° and outer ≈ 32° wheel angles) giving the
+  // published ≈ 11.0 m kerb-to-kerb turning circle.
   sedan: {
     id: 'sedan',
     name: 'Седан',
     model: 'sedan',
-    length: 4.70, width: 1.80, height: 1.45,
-    wheelbase: 2.75,
-    frontOverhang: 0.95, rearOverhang: 1.00,
-    track: 1.56, tireWidth: 0.22, wheelRadius: 0.32,
-    maxSteerDeg: 35,
+    length: 4.689, width: 1.829, height: 1.47,
+    wheelbase: 2.686,
+    frontOverhang: 0.91, rearOverhang: 1.093,
+    track: 1.54, tireWidth: 0.22, wheelRadius: 0.32,
+    maxSteerDeg: 34.5,
     eye: { x: 1.15, y: 0.37, z: 1.15 },
     mirrors: {
       left: { x: 1.83, y: 1.02, z: 1.07 },

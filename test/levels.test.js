@@ -38,8 +38,8 @@ for (const ex of ['parallel', 'garage']) {
 
 test('parallel L3 sedan spot', () => {
   const w = buildLevel('parallel', 3, 'sedan');
-  near(w.target.length, 4.7 + 1.5, 1e-9);
-  near(w.target.width, 1.8 + 0.5, 1e-9);
+  near(w.target.length, CAR_SPECS.sedan.length + 1.5, 1e-9);
+  near(w.target.width, CAR_SPECS.sedan.width + 0.5, 1e-9);
   const touching = w.obstacles.filter((o) => o.kind === 'car' && rectsIntersect(o.rect, inflateRect(w.target, 0.01)));
   assert.equal(touching.length, 2);
 });

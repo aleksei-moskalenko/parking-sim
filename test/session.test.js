@@ -1,13 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSession } from '../src/sim/session.js';
+import { CAR_SPECS } from '../src/sim/cars.js';
 import { createVehicle, poseFromBodyCenter, bodyRect } from '../src/sim/vehicle.js';
 import { rectsIntersect, inflateRect } from '../src/sim/geometry.js';
 
 const DT = 1 / 60;
 const idle = { throttle: false, brake: false, left: false, right: false };
 const brake = { ...idle, brake: true };
-const IDEAL_Y = 0.15 + 1.56 / 2 + 0.22 / 2;
+const S = CAR_SPECS.sedan;
+// Curb-side wheels' outer edges 15 cm from the curb.
+const IDEAL_Y = 0.15 + S.track / 2 + S.tireWidth / 2;
 const newSession = () => createSession({ exercise: 'parallel', level: 1, carId: 'sedan' });
 
 function run(s, input, seconds) {
@@ -136,7 +139,7 @@ test('turning the wheel at rest beside the curb does not freeze the car', () => 
   run(s, idle, 2);
   run(s, brake, 0.5);
   // Curb-side wheels 3 cm from the curb.
-  s.vehicle = { ...createVehicle(s.spec, poseFromBodyCenter(s.spec, s.world.target.cx, 0.03 + 0.78 + 0.11, 0)), gear: 'D' };
+  s.vehicle = { ...createVehicle(s.spec, poseFromBodyCenter(s.spec, s.world.target.cx, 0.03 + S.track / 2 + S.tireWidth / 2, 0)), gear: 'D' };
   run(s, { ...brake, right: true }, 1);
   run(s, { ...brake, left: true }, 0.5);
   const x0 = s.vehicle.x;

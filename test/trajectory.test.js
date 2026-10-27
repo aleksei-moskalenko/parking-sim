@@ -19,9 +19,9 @@ test('reverse goes backwards', () => {
 });
 
 test('full-lock rear-left radius', () => {
-  const max = 35 * Math.PI / 180, R = 2.75 / Math.tan(max);
+  const max = S.maxSteerDeg * Math.PI / 180, R = S.wheelbase / Math.tan(max);
   const p = predictWheelPaths({ ...createVehicle(S, { x: 0, y: 0, heading: 0 }), steer: max }, S).forward.rl;
-  assert.ok(p.every(([x, y]) => Math.abs(Math.hypot(x, y - R) - (R - 0.78)) < 0.01));
+  assert.ok(p.every(([x, y]) => Math.abs(Math.hypot(x, y - R) - (R - S.track / 2)) < 0.01));
 });
 
 test('all four wheels in both directions', () => {
