@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { robustSpan } from '../view/fit.js';
 
 export const MODEL_FILES = {
   sedan: 'sedan.glb',
@@ -49,13 +50,28 @@ function boxCone({ height }) {
   return m;
 }
 
-// Group whose forward is +X, centred on the body centre, bottom at y = 0.
+// Body width without protruding side mirrors (they do not count for collisions).
+function bodyWidthSpan(holder) {
+  holder.updateMatrixWorld(true);
+  const root = holder.getObjectByName('body') ?? holder;
+  const zs = [];
+  const v = new THREE.Vector3();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) zs.push(v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).z);
+  });
+  return robustSpan(zs);
+}
+
+// Group whose forward is +X, centred on the body centre, bottom at y = 0;
+// the body (not the mirrors) fills dims exactly.
 export function makeModelMesh(key, dims, models, color = 0x8899aa) {
   const group = new THREE.Group();
   const src = models.get(key);
   if (!src) {
     group.add(key === 'cone' ? boxCone(dims) : boxCar(dims, color));
-    return group;
+    return shadows(group);
   }
   const obj = src.clone(true);
   const raw = new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3());
@@ -65,12 +81,37 @@ export function makeModelMesh(key, dims, models, color = 0x8899aa) {
   holder.add(obj);
   holder.updateMatrixWorld(true);
   const size = new THREE.Box3().setFromObject(holder).getSize(new THREE.Vector3());
-  holder.scale.set(dims.length / size.x, dims.height / size.y, dims.width / size.z);
+  const width = key === 'cone' ? { size: size.z, center: 0 } : bodyWidthSpan(holder);
+  holder.scale.set(dims.length / size.x, dims.height / size.y, dims.width / width.size);
   holder.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(holder);
   const center = box.getCenter(new THREE.Vector3());
-  holder.position.set(-center.x, -box.min.y, -center.z);
+  holder.position.set(-center.x, -box.min.y, -width.center * holder.scale.z);
   group.add(holder);
+
+  group.userData.frontWheels = ['wheel-front-left', 'wheel-front-right']
+    .map((n) => obj.getObjectByName(n))
+    .filter(Boolean)
+    .map((w) => ({ node: w, base: w.quaternion.clone() }));
+  return shadows(group);
+}
+
+const UP = new THREE.Vector3(0, 1, 0);
+const steerQ = new THREE.Quaternion();
+
+// Turn a model's front wheels; positive steer = left.
+export function steerWheels(group, steer) {
+  steerQ.setFromAxisAngle(UP, steer);
+  for (const w of group.userData.frontWheels ?? []) w.node.quaternion.copy(steerQ).multiply(w.base);
+}
+
+function shadows(group) {
+  group.traverse((o) => {
+    if (o.isMesh) {
+      o.castShadow = true;
+      o.receiveShadow = true;
+    }
+  });
   return group;
 }
 

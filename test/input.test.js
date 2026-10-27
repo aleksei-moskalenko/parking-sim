@@ -50,3 +50,11 @@ test('dispose stops listening', () => {
   t.dispatchEvent(kd('KeyW'));
   assert.equal(i.state.throttle, false);
 });
+
+test('M toggles screen mirrors as a single press', () => {
+  const t = new EventTarget(), i = createInput(t);
+  const got = [];
+  i.onKey((c) => got.push(c));
+  t.dispatchEvent(kd('KeyM', 'ь'));
+  assert.deepEqual(got, ['KeyM']);
+});

@@ -8,9 +8,9 @@ const DEG = Math.PI / 180;
 const v3 = (p) => new THREE.Vector3(p.x, p.z, -p.y);
 
 const MIRRORS = [
-  { key: 'left', size: [0.20, 0.13], rt: [512, 320], fov: 30, yaw: 90 - 10, layers: [LAYER.world, LAYER.ownBody, LAYER.roof] },
-  { key: 'right', size: [0.20, 0.13], rt: [512, 320], fov: 30, yaw: 90 + 10, layers: [LAYER.world, LAYER.ownBody, LAYER.roof] },
-  { key: 'center', size: [0.25, 0.07], rt: [640, 192], fov: 25, yaw: 90, layers: [LAYER.world, LAYER.cockpit, LAYER.roof] },
+  { key: 'left', size: [0.20, 0.13], rt: [640, 416], fov: 30, yaw: 90 - 10, layers: [LAYER.world, LAYER.ownBody, LAYER.roof] },
+  { key: 'right', size: [0.20, 0.13], rt: [640, 416], fov: 30, yaw: 90 + 10, layers: [LAYER.world, LAYER.ownBody, LAYER.roof] },
+  { key: 'center', size: [0.25, 0.07], rt: [1024, 288], fov: 25, yaw: 90, layers: [LAYER.world, LAYER.roof] },
 ];
 const PITCH = -3 * DEG;
 
@@ -43,7 +43,7 @@ export function createMirrors(spec) {
     camera.layers.disableAll();
     for (const l of m.layers) camera.layers.enable(l);
     group.add(camera);
-    return { camera, target };
+    return { key: m.key, camera, target, aspect: w / h };
   });
 
   return {
@@ -57,6 +57,52 @@ export function createMirrors(spec) {
     },
     dispose() {
       for (const m of mirrors) m.target.dispose();
+    },
+    mirrors,
+  };
+}
+
+// The same three mirror images as large screen insets, so they are readable
+// without hunting for the small mirrors in the cabin.
+const INSET = {
+  left: { width: 0.2, x: 'left', y: 0.6 },
+  right: { width: 0.2, x: 'right', y: 0.6 },
+  center: { width: 0.3, x: 'center', y: 0.1 },
+};
+const MARGIN = 14;
+const FRAME = 4;
+
+export function createMirrorOverlay(mirrorSet) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(0, 1, 1, 0, -1, 1);
+  const quads = mirrorSet.mirrors.map((m) => {
+    const frame = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x15171a, depthTest: false }));
+    const image = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: m.target.texture, depthTest: false }));
+    frame.renderOrder = 0;
+    image.renderOrder = 1;
+    scene.add(frame, image);
+    return { ...m, frame, image };
+  });
+
+  return {
+    render(renderer, width, height) {
+      camera.right = width;
+      camera.top = height;
+      camera.updateProjectionMatrix();
+      for (const q of quads) {
+        const spec = INSET[q.key];
+        const w = width * spec.width, h = w / q.aspect;
+        const cx = spec.x === 'left' ? MARGIN + w / 2 : spec.x === 'right' ? width - MARGIN - w / 2 : width / 2;
+        const cy = height * (1 - spec.y) - h / 2;
+        q.image.position.set(cx, cy, 0);
+        q.image.scale.set(w, h, 1);
+        q.frame.position.set(cx, cy, 0);
+        q.frame.scale.set(w + 2 * FRAME, h + 2 * FRAME, 1);
+      }
+      const autoClear = renderer.autoClear;
+      renderer.autoClear = false;
+      renderer.render(scene, camera);
+      renderer.autoClear = autoClear;
     },
   };
 }

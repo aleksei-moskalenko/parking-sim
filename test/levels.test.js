@@ -85,3 +85,8 @@ test('garage target box is open, neighbours closed', () => {
 test('Master parallel margin raised to 0.8 m by the feasibility check', () => {
   near(buildLevel('parallel', 6, 'minivan').target.length, 5.10 + 0.8, 1e-9);
 });
+
+test('garage walls carry a look for rendering', () => {
+  const looks = new Set(buildLevel('garage', 1, 'sedan').obstacles.filter((o) => o.kind === 'wall').map((o) => o.look));
+  assert.deepEqual([...looks].sort(), ['brick', 'door', 'fence', 'garage']);
+});

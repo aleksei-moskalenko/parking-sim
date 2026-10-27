@@ -10,6 +10,7 @@ export function createHud(root) {
     <div class="hud-hints">
       <span data-hint="top">T — вид сверху</span>
       <span data-hint="trajectories">H — траектории</span>
+      <span data-view="mirrors">M — зеркала на экране</span>
     </div>
     <div class="hud-panel">
       <div class="hud-gears">${['P', 'R', 'N', 'D'].map((g) => `<span data-gear="${g}">${g}</span>`).join('')}</div>
@@ -22,13 +23,15 @@ export function createHud(root) {
   const $ = (sel) => root.querySelector(sel);
   const gears = [...root.querySelectorAll('[data-gear]')];
   const hints = [...root.querySelectorAll('[data-hint]')];
+  const mirrorsToggle = root.querySelector('[data-view="mirrors"]');
   const speed = $('.hud-speed b'), needle = $('.hud-steer-needle'), steerText = $('.hud-steer-text');
   const msg = $('.hud-msg'), flashEl = $('.hud-flash');
   let msgTimer = 0, flashTimer = 0, audio = null;
 
   return {
     show(on) { root.hidden = !on; },
-    update(session) {
+    update(session, view = {}) {
+      mirrorsToggle.classList.toggle('on', !!view.screenMirrors);
       const v = session.vehicle;
       for (const g of gears) g.classList.toggle('on', g.dataset.gear === v.gear);
       for (const h of hints) h.classList.toggle('on', session.hints[h.dataset.hint]);

@@ -46,8 +46,9 @@ function makeBuilder(seed) {
     obstacles,
     between: (a, b) => a + (b - a) * rng(),
     pickType: () => PARKED_TYPES[Math.floor(rng() * PARKED_TYPES.length)],
-    add(kind, rect, height, model) {
-      obstacles.push({ id: `${kind}-${nextId++}`, kind, rect, height, ...(model ? { model } : {}) });
+    // extra: { model } for cars/cones, { look } for walls (render-only hints).
+    add(kind, rect, height, extra = {}) {
+      obstacles.push({ id: `${kind}-${nextId++}`, kind, rect, height, ...extra });
     },
   };
 }
@@ -77,7 +78,7 @@ function buildParallel(cfg, spec, b) {
   const target = box(0, T, 0, spec.width + 0.5);
 
   const addParked = (type, x0, heading, cy) => {
-    b.add('car', { cx: x0 + type.length / 2, cy, length: type.length, width: type.width, heading }, type.height, type.model);
+    b.add('car', { cx: x0 + type.length / 2, cy, length: type.length, width: type.width, heading }, type.height, { model: type.model });
     return type.length;
   };
   const ownCy = (type) => b.between(0.15, 0.25) + type.width / 2;
@@ -102,7 +103,7 @@ function buildParallel(cfg, spec, b) {
     farCurb = line + 2.2;
   } else {
     for (let cx = minX; cx <= maxX; cx += CONE.spacing) {
-      b.add('cone', { cx, cy: line + CONE.size / 2, length: CONE.size, width: CONE.size, heading: 0 }, CONE.height, 'cone');
+      b.add('cone', { cx, cy: line + CONE.size / 2, length: CONE.size, width: CONE.size, heading: 0 }, CONE.height, { model: 'cone' });
     }
     farCurb = line + 1.0;
   }
@@ -151,35 +152,35 @@ function buildGarage(cfg, spec, b) {
   const pitch = wi + t;
   const minX = -25, maxX = 25;
   const rowX0 = -2.5 * pitch - t / 2, rowX1 = 2.5 * pitch + t / 2;
-  const wall = (rect) => b.add('wall', rect, WALL.height);
+  const wall = (rect, look) => b.add('wall', rect, WALL.height, { look });
 
   for (let j = 0; j <= 5; j++) {
     const x = rowX0 + j * pitch;
-    wall(box(x, x + t, -depth - t, 0));
+    wall(box(x, x + t, -depth - t, 0), 'garage');
   }
-  wall(box(rowX0, rowX1, -depth - t, -depth));
+  wall(box(rowX0, rowX1, -depth - t, -depth), 'garage');
   for (let k = -2; k <= 2; k++) {
-    if (k !== 0) wall(box(k * pitch - wi / 2, k * pitch + wi / 2, -t, 0));
+    if (k !== 0) wall(box(k * pitch - wi / 2, k * pitch + wi / 2, -t, 0), 'door');
   }
   // Building facade continuing the garage line on both sides.
-  wall(box(minX, rowX0, -t, 0));
-  wall(box(rowX1, maxX, -t, 0));
+  wall(box(minX, rowX0, -t, 0), 'brick');
+  wall(box(rowX1, maxX, -t, 0), 'brick');
 
   const dw = cfg.driveWidth;
   let fenceY;
   if (cfg.opposite === 'empty') {
     for (let cx = minX; cx <= maxX; cx += CONE.spacing) {
-      b.add('cone', { cx, cy: dw + CONE.size / 2, length: CONE.size, width: CONE.size, heading: 0 }, CONE.height, 'cone');
+      b.add('cone', { cx, cy: dw + CONE.size / 2, length: CONE.size, width: CONE.size, heading: 0 }, CONE.height, { model: 'cone' });
     }
     fenceY = dw + 1.5;
   } else {
     fillRow(b, minX, maxX, (type, x0) => {
-      b.add('car', { cx: x0 + type.length / 2, cy: dw + type.width / 2, length: type.length, width: type.width, heading: 0 }, type.height, type.model);
+      b.add('car', { cx: x0 + type.length / 2, cy: dw + type.width / 2, length: type.length, width: type.width, heading: 0 }, type.height, { model: type.model });
       return type.length;
     });
     fenceY = dw + 2.2;
   }
-  b.add('wall', box(minX, maxX, fenceY, fenceY + t), 1.6);
+  b.add('wall', box(minX, maxX, fenceY, fenceY + t), 1.6, { look: 'fence' });
 
   return {
     bounds: { minX, maxX, minY: -depth - t, maxY: fenceY },

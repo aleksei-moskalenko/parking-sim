@@ -5,15 +5,18 @@ import * as THREE from 'three';
 import { createSession } from './sim/session.js';
 import { createInput } from './input.js';
 import { buildEnvironment, disposeObject } from './render/scene.js';
-import { makeModelMesh, setLayer } from './render/models.js';
+import { makeModelMesh, setLayer, steerWheels } from './render/models.js';
 import { createTopCamera, createTrajectoryLines } from './render/hints.js';
-import { createMirrors } from './render/mirrors.js';
+import { createMirrors, createMirrorOverlay } from './render/mirrors.js';
 import { predictWheelPaths } from './view/trajectory.js';
 import { buildCockpit } from './render/cockpit.js';
 import { LAYER } from './render/layers.js';
 import { createHead, applyMouse, resetHead, updateHead, headOffset } from './view/head.js';
 
 const GEARS = { Digit1: 'P', Digit2: 'R', Digit3: 'N', Digit4: 'D' };
+// Sun offset from the car (three coords): low enough for readable shadows.
+const SUN_OFFSET = new THREE.Vector3(-18, 26, 12);
+const SHADOW_HALF_SIZE = 22;
 const SHIFT_MESSAGES = {
   moving: 'Сначала остановитесь',
   'need-brake': 'Нажмите тормоз (S), чтобы переключить передачу',
@@ -26,6 +29,9 @@ function getRenderer() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = false;   // refreshed once per frame, shared by all views
     document.getElementById('app').appendChild(renderer.domElement);
     window.addEventListener('resize', () => renderer.setSize(window.innerWidth, window.innerHeight));
   }
@@ -36,12 +42,16 @@ function buildScene(world, models) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xbcd4ea);
   scene.fog = new THREE.Fog(0xbcd4ea, 60, 160);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x5d6650, 1.2));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.8);
-  sun.position.set(30, 50, 20);
-  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x5d6650, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 2.4);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -SHADOW_HALF_SIZE, right: SHADOW_HALF_SIZE, top: SHADOW_HALF_SIZE, bottom: -SHADOW_HALF_SIZE, near: 1, far: 90 });
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.03;
+  scene.add(sun, sun.target);
   scene.add(buildEnvironment(world, models));
-  return scene;
+  return { scene, sun };
 }
 
 function buildOwnCar(spec, models) {
@@ -50,6 +60,7 @@ function buildOwnCar(spec, models) {
   body.position.x = spec.length / 2 - spec.rearOverhang;
   setLayer(body, LAYER.ownBody);
   car.add(body);
+  car.userData.body = body;
   return car;
 }
 
@@ -71,12 +82,14 @@ export class Run {
     this.session = createSession(config);
     this.renderer = getRenderer();
     this.canvas = this.renderer.domElement;
-    this.scene = buildScene(this.session.world, models);
+    ({ scene: this.scene, sun: this.sun } = buildScene(this.session.world, models));
     this.car = buildOwnCar(this.session.spec, models);
     this.cockpit = buildCockpit(this.session.spec);
     this.car.add(this.cockpit.group);
     this.mirrors = createMirrors(this.session.spec);
     this.car.add(this.mirrors.group);
+    this.mirrorOverlay = createMirrorOverlay(this.mirrors);
+    this.screenMirrors = true;
     this.scene.add(this.car);
     this.paths = createTrajectoryLines();
     this.scene.add(this.paths.object);
@@ -144,6 +157,8 @@ export class Run {
       s.setHint('top', !s.hints.top);
     } else if (code === 'KeyH') {
       s.setHint('trajectories', !s.hints.trajectories);
+    } else if (code === 'KeyM') {
+      this.screenMirrors = !this.screenMirrors;
     }
   }
 
@@ -169,9 +184,12 @@ export class Run {
     updateHead(this.head, dt);
     this.syncCar();
     this.syncPaths();
-    this.hud.update(this.session);
-    if (!this.session.hints.top) this.mirrors.render(this.renderer, this.scene);
+    this.hud.update(this.session, { screenMirrors: this.screenMirrors });
+    this.renderer.shadowMap.needsUpdate = true;
+    const top = this.session.hints.top;
+    if (!top) this.mirrors.render(this.renderer, this.scene);
     this.renderer.render(this.scene, this.currentCamera());
+    if (!top && this.screenMirrors) this.mirrorOverlay.render(this.renderer, window.innerWidth, window.innerHeight);
     this.raf = requestAnimationFrame(this.frame);
   }
 
@@ -197,6 +215,10 @@ export class Run {
     this.car.rotation.y = v.heading;
     this.car.updateMatrixWorld(true);
     this.cockpit.setSteer(v.steer);
+    steerWheels(this.car.userData.body, v.steer);
+    this.sun.target.position.copy(this.car.position);
+    this.sun.position.copy(this.car.position).add(SUN_OFFSET);
+    this.sun.target.updateMatrixWorld();
   }
 
   syncPaths() {

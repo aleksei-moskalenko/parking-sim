@@ -2,7 +2,7 @@
 // any layout, including Russian.
 
 const HELD = { KeyW: 'throttle', KeyS: 'brake', KeyA: 'left', KeyD: 'right' };
-const PRESS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyT', 'KeyH']);
+const PRESS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'KeyT', 'KeyH', 'KeyM']);
 
 export function createInput(target = window) {
   const state = { throttle: false, brake: false, left: false, right: false };
