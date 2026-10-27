@@ -1,4 +1,5 @@
 // One run on screen: session + scene + cameras + render loop.
+// States: ready (waiting for the first click) → running ⇄ paused → finished.
 
 import * as THREE from 'three';
 import { createSession } from './sim/session.js';
@@ -6,9 +7,15 @@ import { createInput } from './input.js';
 import { buildEnvironment, disposeObject } from './render/scene.js';
 import { makeModelMesh, setLayer } from './render/models.js';
 import { createTopCamera } from './render/hints.js';
+import { buildCockpit } from './render/cockpit.js';
 import { LAYER } from './render/layers.js';
+import { createHead, applyMouse, resetHead, updateHead, headOffset } from './view/head.js';
 
 const GEARS = { Digit1: 'P', Digit2: 'R', Digit3: 'N', Digit4: 'D' };
+const SHIFT_MESSAGES = {
+  moving: 'Сначала остановитесь',
+  'need-brake': 'Нажмите тормоз (S), чтобы переключить передачу',
+};
 
 let renderer = null;
 
@@ -44,49 +51,147 @@ function buildOwnCar(spec, models) {
   return car;
 }
 
+function createDriverCamera() {
+  const camera = new THREE.PerspectiveCamera(65, 1, 0.05, 400);
+  camera.rotation.order = 'YXZ';
+  camera.layers.set(LAYER.world);
+  camera.layers.enable(LAYER.cockpit);
+  camera.layers.enable(LAYER.roof);
+  return camera;
+}
+
 export class Run {
-  constructor(config, { models }) {
+  constructor(config, { models, hud, ui }) {
     this.config = config;
+    this.hud = hud;
+    this.ui = ui;
+    this.state = 'ready';
     this.session = createSession(config);
     this.renderer = getRenderer();
+    this.canvas = this.renderer.domElement;
     this.scene = buildScene(this.session.world, models);
     this.car = buildOwnCar(this.session.spec, models);
+    this.cockpit = buildCockpit(this.session.spec);
+    this.car.add(this.cockpit.group);
     this.scene.add(this.car);
+    this.driverCam = createDriverCamera();
     this.top = createTopCamera();
+    this.head = createHead();
     this.input = createInput(window);
     this.input.onKey((code) => this.onKey(code));
+
+    this.onClick = () => {
+      if (document.pointerLockElement === this.canvas) resetHead(this.head);
+      else if (this.state !== 'finished') this.lock();
+    };
+    this.onMouseMove = (e) => {
+      if (document.pointerLockElement === this.canvas) applyMouse(this.head, e.movementX, e.movementY);
+    };
+    this.onLockChange = () => {
+      if (document.pointerLockElement === this.canvas) this.resume();
+      else if (this.state === 'running') this.pause();
+    };
+    this.canvas.addEventListener('click', this.onClick);
+    document.addEventListener('mousemove', this.onMouseMove);
+    document.addEventListener('pointerlockchange', this.onLockChange);
+
+    hud.show(true);
+    ui.onReady(this);
     this.last = performance.now();
     this.frame = this.frame.bind(this);
     this.raf = requestAnimationFrame(this.frame);
   }
 
+  lock() {
+    try {
+      const p = this.canvas.requestPointerLock();
+      p?.catch?.(() => this.resume());
+    } catch {
+      this.resume();
+    }
+  }
+
+  resume() {
+    if (this.state === 'finished') return;
+    this.state = 'running';
+    this.ui.onResume(this);
+  }
+
+  pause() {
+    this.state = 'paused';
+    this.input.releaseAll();
+    this.ui.onPause(this);
+  }
+
   onKey(code) {
+    if (this.state !== 'running') return;
     const s = this.session;
-    if (GEARS[code]) s.shift(GEARS[code], this.input.state.brake);
-    else if (code === 'KeyT') s.setHint('top', !s.hints.top);
-    else if (code === 'KeyH') s.setHint('trajectories', !s.hints.trajectories);
+    if (GEARS[code]) {
+      const r = s.shift(GEARS[code], this.input.state.brake);
+      if (!r.ok && SHIFT_MESSAGES[r.reason]) this.hud.message(SHIFT_MESSAGES[r.reason]);
+      if (s.finished) this.finish();
+    } else if (code === 'KeyT') {
+      s.setHint('top', !s.hints.top);
+    } else if (code === 'KeyH') {
+      s.setHint('trajectories', !s.hints.trajectories);
+    }
+  }
+
+  finish() {
+    this.state = 'finished';
+    this.input.releaseAll();
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock();
+    this.ui.onFinish(this);
   }
 
   frame(now) {
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
-    this.session.update(this.input.state, dt);
+    if (this.state === 'running') {
+      const { newFaults } = this.session.update(this.input.state, dt);
+      if (newFaults.length) {
+        this.hud.flash();
+        this.hud.beep();
+      }
+    }
+    updateHead(this.head, dt);
     this.syncCar();
-    const aspect = window.innerWidth / window.innerHeight;
-    this.top.update(this.session, aspect);
-    this.renderer.render(this.scene, this.top.camera);
+    this.hud.update(this.session);
+    this.renderer.render(this.scene, this.currentCamera());
     this.raf = requestAnimationFrame(this.frame);
+  }
+
+  currentCamera() {
+    const aspect = window.innerWidth / window.innerHeight;
+    if (this.session.hints.top) {
+      this.top.update(this.session, aspect);
+      return this.top.camera;
+    }
+    const { eye } = this.session.spec;
+    const off = headOffset(this.head);
+    const cam = this.driverCam;
+    cam.aspect = aspect;
+    cam.updateProjectionMatrix();
+    cam.position.copy(this.car.localToWorld(new THREE.Vector3(eye.x + off.x, eye.z + off.z, -(eye.y + off.y))));
+    cam.rotation.set(this.head.pitch, this.session.vehicle.heading - Math.PI / 2 + this.head.yaw, 0);
+    return cam;
   }
 
   syncCar() {
     const v = this.session.vehicle;
     this.car.position.set(v.x, 0, -v.y);
     this.car.rotation.y = v.heading;
+    this.car.updateMatrixWorld(true);
+    this.cockpit.setSteer(v.steer);
   }
 
   stop() {
     cancelAnimationFrame(this.raf);
     this.input.dispose();
+    this.canvas.removeEventListener('click', this.onClick);
+    document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('pointerlockchange', this.onLockChange);
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     disposeObject(this.scene);
   }
 }
