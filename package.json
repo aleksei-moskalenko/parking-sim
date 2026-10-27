@@ -1,0 +1,12 @@
+{
+  "name": "parking-sim",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "First-person parking trainer: parallel parking and reversing into a garage",
+  "scripts": {
+    "test": "node --test",
+    "test:levels": "node --test test/slow/",
+    "start": "python3 -m http.server 8080"
+  }
+}
