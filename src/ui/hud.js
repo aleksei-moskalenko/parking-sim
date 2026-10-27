@@ -11,6 +11,7 @@ export function createHud(root) {
       <span data-hint="top">T — вид сверху</span>
       <span data-hint="trajectories">H — траектории</span>
       <span data-view="mirrors">M — зеркала на экране</span>
+      <span data-view="mouse">Клик — обзор мышью</span>
     </div>
     <div class="hud-panel">
       <div class="hud-gears">${['P', 'R', 'N', 'D'].map((g) => `<span data-gear="${g}">${g}</span>`).join('')}</div>
@@ -24,6 +25,7 @@ export function createHud(root) {
   const gears = [...root.querySelectorAll('[data-gear]')];
   const hints = [...root.querySelectorAll('[data-hint]')];
   const mirrorsToggle = root.querySelector('[data-view="mirrors"]');
+  const mouseHint = root.querySelector('[data-view="mouse"]');
   const speed = $('.hud-speed b'), needle = $('.hud-steer-needle'), steerText = $('.hud-steer-text');
   const msg = $('.hud-msg'), flashEl = $('.hud-flash');
   let msgTimer = 0, flashTimer = 0, audio = null;
@@ -32,6 +34,7 @@ export function createHud(root) {
     show(on) { root.hidden = !on; },
     update(session, view = {}) {
       mirrorsToggle.classList.toggle('on', !!view.screenMirrors);
+      mouseHint.hidden = !!view.mouseLook;
       const v = session.vehicle;
       for (const g of gears) g.classList.toggle('on', g.dataset.gear === v.gear);
       for (const h of hints) h.classList.toggle('on', session.hints[h.dataset.hint]);
@@ -43,11 +46,11 @@ export function createHud(root) {
       const arrow = Math.abs(deg) < 0.5 ? '' : deg > 0 ? ' ←' : ' →';
       steerText.textContent = `колёса ${Math.abs(Math.round(deg))}°${arrow}`;
     },
-    message(text) {
+    message(text, ms = MESSAGE_MS) {
       msg.textContent = text;
       msg.classList.add('on');
       clearTimeout(msgTimer);
-      msgTimer = setTimeout(() => msg.classList.remove('on'), MESSAGE_MS);
+      msgTimer = setTimeout(() => msg.classList.remove('on'), ms);
     },
     flash() {
       flashEl.classList.add('on');

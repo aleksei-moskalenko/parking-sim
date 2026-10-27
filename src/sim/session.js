@@ -37,7 +37,11 @@ export class Session {
     const n = Math.max(1, Math.ceil(total / SUBSTEP));
     for (let i = 0; i < n; i++) {
       const prev = this.vehicle;
-      const next = stepVehicle(prev, this.spec, input, total / n);
+      let next = stepVehicle(prev, this.spec, input, total / n);
+      // A front wheel turning against the curb is held by it, not counted as a hit.
+      if (next.steer !== prev.steer && findCollisions(this.world, { ...prev, steer: next.steer }, this.spec).length) {
+        next = stepVehicle(prev, this.spec, { ...input, left: false, right: false }, total / n);
+      }
       const hits = findCollisions(this.world, next, this.spec);
       if (hits.length) {
         for (const h of this.tracker.onBlocked(hits)) {

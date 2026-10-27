@@ -129,3 +129,18 @@ test('no updates after finish', () => {
   run(s, idle, 1);
   assert.equal(s.vehicle.x, x);
 });
+
+test('turning the wheel at rest beside the curb does not freeze the car', () => {
+  const s = newSession();
+  s.shift('D', true);
+  run(s, idle, 2);
+  run(s, brake, 0.5);
+  // Curb-side wheels 3 cm from the curb.
+  s.vehicle = { ...createVehicle(s.spec, poseFromBodyCenter(s.spec, s.world.target.cx, 0.03 + 0.78 + 0.11, 0)), gear: 'D' };
+  run(s, { ...brake, right: true }, 1);
+  run(s, { ...brake, left: true }, 0.5);
+  const x0 = s.vehicle.x;
+  run(s, idle, 1);
+  assert.ok(s.vehicle.x - x0 > 0.3, `car moved ${s.vehicle.x - x0} m`);
+  assert.equal(s.faults.filter((f) => f.code === 'curb').length, 0);
+});

@@ -78,7 +78,7 @@ export class Run {
     this.config = config;
     this.hud = hud;
     this.ui = ui;
-    this.state = 'ready';
+    this.state = 'running';   // the exam is live at once; the car waits in P
     this.session = createSession(config);
     this.renderer = getRenderer();
     this.canvas = this.renderer.domElement;
@@ -103,6 +103,13 @@ export class Run {
       if (document.pointerLockElement === this.canvas) resetHead(this.head);
       else if (this.state !== 'finished') this.lock();
     };
+    // Leaving the window must stop the car even when the mouse is not captured.
+    this.onBlur = () => {
+      if (this.state === 'running') this.pause();
+    };
+    this.onVisibility = () => {
+      if (document.hidden && this.state === 'running') this.pause();
+    };
     this.onMouseMove = (e) => {
       if (document.pointerLockElement === this.canvas) applyMouse(this.head, e.movementX, e.movementY);
     };
@@ -117,8 +124,11 @@ export class Run {
     document.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('pointerlockchange', this.onLockChange);
     window.addEventListener('keydown', this.onEscape);
+    window.addEventListener('blur', this.onBlur);
+    document.addEventListener('visibilitychange', this.onVisibility);
 
     hud.show(true);
+    hud.message('Зажмите S и нажмите 4 (D), чтобы поехать', 6000);
     ui.onReady(this);
     this.last = performance.now();
     this.frame = this.frame.bind(this);
@@ -184,7 +194,7 @@ export class Run {
     updateHead(this.head, dt);
     this.syncCar();
     this.syncPaths();
-    this.hud.update(this.session, { screenMirrors: this.screenMirrors });
+    this.hud.update(this.session, { screenMirrors: this.screenMirrors, mouseLook: document.pointerLockElement === this.canvas });
     this.renderer.shadowMap.needsUpdate = true;
     const top = this.session.hints.top;
     if (!top) this.mirrors.render(this.renderer, this.scene);
@@ -234,6 +244,8 @@ export class Run {
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('pointerlockchange', this.onLockChange);
     window.removeEventListener('keydown', this.onEscape);
+    window.removeEventListener('blur', this.onBlur);
+    document.removeEventListener('visibilitychange', this.onVisibility);
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.mirrors.dispose();
     disposeObject(this.scene);

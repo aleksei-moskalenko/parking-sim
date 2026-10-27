@@ -1,6 +1,6 @@
 // Final-pose evaluation and the Russian texts for every fault.
 
-import { rectInsideRect, axisAngleDiff, localPoint } from './geometry.js';
+import { rectInsideRect, axisAngleDiff, localPoint, normalizeAngle } from './geometry.js';
 import { bodyRect, bodyCenter, wheelCenters } from './vehicle.js';
 
 export const LIMITS = { curbDistance: 0.30, angleDeg: 3, lateralOffset: 0.15, spotTolerance: 0.05 };
@@ -34,6 +34,8 @@ export function evaluatePose(world, state, spec) {
   if (measures.angleDeg > LIMITS.angleDeg) faults.push({ code: 'angle', value: measures.angleDeg });
 
   if (world.exercise === 'garage') {
+    // Reverse parking: the car must face out of the box.
+    if (Math.abs(normalizeAngle(state.heading - world.targetAxis)) > Math.PI / 2) faults.push({ code: 'nose-in' });
     measures.lateralOffset = Math.abs(localPoint(world.target, bodyCenter(state, spec))[1]);
     if (measures.lateralOffset > LIMITS.lateralOffset) faults.push({ code: 'off-center', value: measures.lateralOffset });
   }
@@ -51,6 +53,7 @@ export function formatFault(fault, exercise) {
     case 'too-far': return `Далеко от бордюра: ${cm(fault.value)} см (норма ≤ 30 см)`;
     case 'angle': return `Криво: ${fault.value.toFixed(1)}° (норма ≤ 3°)`;
     case 'off-center': return `Не по центру бокса: ${cm(fault.value)} см (норма ≤ 15 см)`;
+    case 'nose-in': return 'Заезд не задним ходом';
     default: return fault.code;
   }
 }

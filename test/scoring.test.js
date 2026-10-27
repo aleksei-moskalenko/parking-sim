@@ -59,9 +59,11 @@ test('garage ideal / off-center / outside', () => {
   assert.equal(formatFault({ code: 'not-in-spot' }, 'garage'), 'Машина не целиком в боксе');
 });
 
-test('garage nose-in counts the same axis (mod π)', () => {
+test('garage driven in nose-first is not a reverse park', () => {
   const g = buildLevel('garage', 1, 'sedan');
-  assert.deepEqual(evaluatePose(g, at(0, -g.target.length / 2, -Math.PI / 2), S).faults, []);
+  const r = evaluatePose(g, at(0, -g.target.length / 2, -Math.PI / 2), S);
+  assert.deepEqual(codes(r), ['nose-in']);
+  assert.equal(formatFault(r.faults[0], 'garage'), 'Заезд не задним ходом');
 });
 
 test('contact and curb texts', () => {

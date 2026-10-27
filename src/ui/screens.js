@@ -1,4 +1,4 @@
-// Overlay screens: menu, start prompt, pause, result.
+// Overlay screens: menu, pause, result.
 
 import { LEVEL_NAMES } from '../sim/levels.js';
 import { CAR_SPECS } from '../sim/cars.js';
@@ -57,15 +57,6 @@ export function createScreens(root) {
     }));
   }
 
-  function showPrompt(config, { onClick }) {
-    show(`
-      <div class="prompt">
-        <b>${EXERCISES[config.exercise]} · ${CAR_SPECS[config.carId].name} · ${config.level}. ${LEVEL_NAMES[config.level - 1]}</b>
-        <p>Кликните, чтобы начать</p>
-      </div>`);
-    on('.prompt', onClick);
-  }
-
   function showPause({ onResume, onRestart, onMenu }) {
     show(`
       <div class="screen">
@@ -120,5 +111,5 @@ export function createScreens(root) {
     on('[data-a="menu"]', onMenu);
   }
 
-  return { showMenu, showPrompt, showPause, showResult, hide: () => show('') };
+  return { showMenu, showPause, showResult, hide: () => show('') };
 }

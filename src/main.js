@@ -15,7 +15,7 @@ let run = null;
 let models = null;
 
 const ui = {
-  onReady: (r) => screens.showPrompt(r.config, { onClick: () => r.lock() }),
+  onReady: () => screens.hide(),
   onResume: () => screens.hide(),
   onPause: (r) => screens.showPause({
     onResume: () => r.lock(),
