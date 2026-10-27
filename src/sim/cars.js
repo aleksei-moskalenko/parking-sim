@@ -13,9 +13,9 @@ export const CAR_SPECS = {
     maxSteerDeg: 35,
     eye: { x: 1.15, y: 0.37, z: 1.15 },
     mirrors: {
-      left: { x: 1.75, y: 0.98, z: 1.00 },
-      right: { x: 1.75, y: -0.98, z: 1.00 },
-      center: { x: 1.55, y: 0, z: 1.30 },
+      left: { x: 1.95, y: 1.00, z: 1.08 },
+      right: { x: 1.95, y: -1.00, z: 1.08 },
+      center: { x: 1.80, y: 0, z: 1.30 },
     },
   },
   minivan: {
@@ -29,9 +29,9 @@ export const CAR_SPECS = {
     maxSteerDeg: 33,
     eye: { x: 1.35, y: 0.40, z: 1.40 },
     mirrors: {
-      left: { x: 1.95, y: 1.06, z: 1.25 },
-      right: { x: 1.95, y: -1.06, z: 1.25 },
-      center: { x: 1.75, y: 0, z: 1.60 },
+      left: { x: 2.20, y: 1.08, z: 1.30 },
+      right: { x: 2.20, y: -1.08, z: 1.30 },
+      center: { x: 2.00, y: 0, z: 1.60 },
     },
   },
 };

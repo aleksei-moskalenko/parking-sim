@@ -6,7 +6,9 @@ import { createSession } from './sim/session.js';
 import { createInput } from './input.js';
 import { buildEnvironment, disposeObject } from './render/scene.js';
 import { makeModelMesh, setLayer } from './render/models.js';
-import { createTopCamera } from './render/hints.js';
+import { createTopCamera, createTrajectoryLines } from './render/hints.js';
+import { createMirrors } from './render/mirrors.js';
+import { predictWheelPaths } from './view/trajectory.js';
 import { buildCockpit } from './render/cockpit.js';
 import { LAYER } from './render/layers.js';
 import { createHead, applyMouse, resetHead, updateHead, headOffset } from './view/head.js';
@@ -73,7 +75,11 @@ export class Run {
     this.car = buildOwnCar(this.session.spec, models);
     this.cockpit = buildCockpit(this.session.spec);
     this.car.add(this.cockpit.group);
+    this.mirrors = createMirrors(this.session.spec);
+    this.car.add(this.mirrors.group);
     this.scene.add(this.car);
+    this.paths = createTrajectoryLines();
+    this.scene.add(this.paths.object);
     this.driverCam = createDriverCamera();
     this.top = createTopCamera();
     this.head = createHead();
@@ -156,7 +162,9 @@ export class Run {
     }
     updateHead(this.head, dt);
     this.syncCar();
+    this.syncPaths();
     this.hud.update(this.session);
+    if (!this.session.hints.top) this.mirrors.render(this.renderer, this.scene);
     this.renderer.render(this.scene, this.currentCamera());
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -185,6 +193,12 @@ export class Run {
     this.cockpit.setSteer(v.steer);
   }
 
+  syncPaths() {
+    const on = this.session.hints.trajectories;
+    this.paths.object.visible = on;
+    if (on) this.paths.update(predictWheelPaths(this.session.vehicle, this.session.spec));
+  }
+
   stop() {
     cancelAnimationFrame(this.raf);
     this.input.dispose();
@@ -192,6 +206,7 @@ export class Run {
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('pointerlockchange', this.onLockChange);
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
+    this.mirrors.dispose();
     disposeObject(this.scene);
   }
 }
