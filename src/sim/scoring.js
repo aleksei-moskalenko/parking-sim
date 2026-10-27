@@ -3,7 +3,7 @@
 import { rectInsideRect, axisAngleDiff, localPoint, normalizeAngle } from './geometry.js';
 import { bodyRect, bodyCenter, wheelCenters } from './vehicle.js';
 
-export const LIMITS = { curbDistance: 0.30, angleDeg: 3, lateralOffset: 0.15, spotTolerance: 0.05 };
+export const LIMITS = { curbDistance: 0.30, angleDeg: 3, lateralOffset: 0.25, spotTolerance: 0.05 };
 
 const toDeg = (r) => r * 180 / Math.PI;
 const cm = (m) => Math.round(m * 100);
@@ -52,7 +52,7 @@ export function formatFault(fault, exercise) {
     case 'not-in-spot': return exercise === 'garage' ? 'Машина не целиком в боксе' : 'Машина не целиком в разметке места';
     case 'too-far': return `Далеко от бордюра: ${cm(fault.value)} см (норма ≤ 30 см)`;
     case 'angle': return `Криво: ${fault.value.toFixed(1)}° (норма ≤ 3°)`;
-    case 'off-center': return `Не по центру бокса: ${cm(fault.value)} см (норма ≤ 15 см)`;
+    case 'off-center': return `Не по центру бокса: ${cm(fault.value)} см (норма ≤ ${cm(LIMITS.lateralOffset)} см)`;
     case 'nose-in': return 'Заезд не задним ходом';
     default: return fault.code;
   }

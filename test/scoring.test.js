@@ -49,10 +49,11 @@ test('garage ideal / off-center / outside', () => {
   const d = g.target.length;
   assert.deepEqual(evaluatePose(g, at(0, -d / 2, Math.PI / 2), S).faults, []);
 
-  const off = evaluatePose(g, at(0.2, -d / 2, Math.PI / 2), S);
+  assert.deepEqual(evaluatePose(g, at(0.24, -d / 2, Math.PI / 2), S).faults, [], '24 cm off is still centred');
+  const off = evaluatePose(g, at(0.3, -d / 2, Math.PI / 2), S);
   assert.deepEqual(codes(off), ['off-center']);
-  assert.equal(formatFault(off.faults[0], 'garage'), 'Не по центру бокса: 20 см (норма ≤ 15 см)');
-  near(off.measures.lateralOffset, 0.2, 1e-9);
+  assert.equal(formatFault(off.faults[0], 'garage'), 'Не по центру бокса: 30 см (норма ≤ 25 см)');
+  near(off.measures.lateralOffset, 0.3, 1e-9);
 
   const out = evaluatePose(g, at(0, -d / 2 + 2, Math.PI / 2), S);
   assert.ok(codes(out).includes('not-in-spot'));
