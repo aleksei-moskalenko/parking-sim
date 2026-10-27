@@ -31,6 +31,10 @@ export const ROW_EDGE = 2.2;
 
 const CONE = { size: 0.3, height: 0.5, spacing: 2.0 };
 const WALL = { thickness: 0.2, height: 2.4 };
+// Render-only marking of the target box opening: striped jambs (the front
+// part of the side walls) and a header beam above any car roof.
+const JAMB_DEPTH = 0.35;
+const HEADER = { z0: 2.05, depth: 0.2 };
 const SIDEWALK_DEPTH = 4;
 const GAP_MIN = 0.8, GAP_MAX = 2.0;
 
@@ -158,7 +162,7 @@ function buildGarage(cfg, spec, b) {
     const x = rowX0 + j * pitch;
     wall(box(x, x + t, -depth - t, 0), 'garage');
   }
-  wall(box(rowX0, rowX1, -depth - t, -depth), 'garage');
+  wall(box(rowX0, rowX1, -depth - t, -depth), 'garage-back');
   for (let k = -2; k <= 2; k++) {
     if (k !== 0) wall(box(k * pitch - wi / 2, k * pitch + wi / 2, -t, 0), 'door');
   }
@@ -193,6 +197,10 @@ function buildGarage(cfg, spec, b) {
     decor: {
       buildings: buildings(b, minX, maxX, fenceY + 3, fenceY + 13),
       roofs: [{ ...box(rowX0, rowX1, -depth - t, 0.3), height: WALL.height }],
+      frames: {
+        jambs: [box(-wi / 2 - t, -wi / 2, -JAMB_DEPTH, 0), box(wi / 2, wi / 2 + t, -JAMB_DEPTH, 0)],
+        header: { ...box(-wi / 2 - t, wi / 2 + t, -HEADER.depth, 0), z0: HEADER.z0, height: WALL.height - HEADER.z0 },
+      },
     },
   };
 }

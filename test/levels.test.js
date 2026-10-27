@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CAR_SPECS } from '../src/sim/cars.js';
 import { createVehicle, bodyRect, wheelRects } from '../src/sim/vehicle.js';
-import { rectsIntersect, inflateRect } from '../src/sim/geometry.js';
+import { rectsIntersect, inflateRect, rectInsideRect } from '../src/sim/geometry.js';
 import { buildLevel, ROW_EDGE, LEVEL_NAMES, PARALLEL_LEVELS, GARAGE_LEVELS } from '../src/sim/levels.js';
 import { createRng } from '../src/sim/rng.js';
 import { near } from './helpers.js';
@@ -88,5 +88,25 @@ test('Master parallel margin raised to 0.8 m by the feasibility check', () => {
 
 test('garage walls carry a look for rendering', () => {
   const looks = new Set(buildLevel('garage', 1, 'sedan').obstacles.filter((o) => o.kind === 'wall').map((o) => o.look));
-  assert.deepEqual([...looks].sort(), ['brick', 'door', 'fence', 'garage']);
+  assert.deepEqual([...looks].sort(), ['brick', 'door', 'fence', 'garage', 'garage-back']);
+});
+
+test('garage opening has marked jambs inside the walls and a header above car height', () => {
+  for (const car of ['sedan', 'minivan']) {
+    const w = buildLevel('garage', 6, car);
+    const { jambs, header } = w.decor.frames;
+    assert.equal(jambs.length, 2);
+    const walls = w.obstacles.filter((o) => o.kind === 'wall');
+    for (const j of jambs) {
+      assert.ok(walls.some((o) => rectInsideRect(j, o.rect, 1e-9)), 'jamb lies inside a side wall');
+      near(j.cy + j.width / 2, 0, 1e-9);                       // at the door line
+    }
+    assert.ok(header.z0 > CAR_SPECS[car].height + 0.2, 'header clears the roof');
+    assert.ok(header.length > w.target.width);
+  }
+});
+
+test('garage back wall is told apart from the side walls', () => {
+  const back = buildLevel('garage', 1, 'sedan').obstacles.filter((o) => o.look === 'garage-back');
+  assert.equal(back.length, 1);
 });

@@ -28,6 +28,29 @@ function speckle(g, w, h, rng, count, colors, size = 2) {
   }
 }
 
+function garageWall(g, w, h, rng, base) {
+  g.fillStyle = base;
+  g.fillRect(0, 0, w, h);
+  speckle(g, w, h, rng, 2500, ['rgba(0,0,0,0.05)', 'rgba(255,255,255,0.08)'], 2);
+  g.fillStyle = 'rgba(40,40,40,0.55)';
+  for (const x of [0, w / 2]) g.fillRect(x, 0, 4, h);          // panel joints
+  g.fillRect(0, h * (1 - 1.6 / 2.4), w, 3);
+  const y0 = h * (1 - 0.70 / 2.4), y1 = h * (1 - 0.45 / 2.4);
+  g.save();
+  g.beginPath(); g.rect(0, y0, w, y1 - y0); g.clip();
+  g.fillStyle = '#f2c200';
+  g.fillRect(0, y0, w, y1 - y0);
+  g.fillStyle = '#1c1c1c';
+  for (let x = -h; x < w + h; x += 64) {
+    g.beginPath();
+    g.moveTo(x, y1); g.lineTo(x + 32, y1); g.lineTo(x + 32 + (y1 - y0), y0); g.lineTo(x + (y1 - y0), y0);
+    g.fill();
+  }
+  g.restore();
+  g.fillStyle = 'rgba(60,60,60,0.45)';
+  g.fillRect(0, h * (1 - 0.12 / 2.4), w, h);                   // dirty skirting
+}
+
 // Each entry: texture and the real-world size (metres) one tile covers.
 const KINDS = {
   asphalt: { tile: [4, 4], make: () => canvasTexture('asphalt', 512, 512, (g, w, h, rng) => {
@@ -76,25 +99,20 @@ const KINDS = {
       }
     }
   }) },
-  // Painted garage wall, one texture = full 2.4 m height: hazard band at bumper height.
-  garage: { tile: [2, 2.4], make: () => canvasTexture('garage', 512, 512, (g, w, h, rng) => {
-    g.fillStyle = '#d9d6cf';
-    g.fillRect(0, 0, w, h);
-    speckle(g, w, h, rng, 2500, ['#cfccc5', '#e2dfd8'], 2);
-    const y0 = h * (1 - 0.70 / 2.4), y1 = h * (1 - 0.45 / 2.4);
-    g.save();
-    g.beginPath(); g.rect(0, y0, w, y1 - y0); g.clip();
+  // Painted precast garage wall, one texture = full 2.4 m height: panel joints
+  // every metre and a hazard band at bumper height.
+  garage: { tile: [2, 2.4], make: () => canvasTexture('garage', 512, 512, (g, w, h, rng) => garageWall(g, w, h, rng, '#d9d6cf')) },
+  'garage-back': { tile: [2, 2.4], make: () => canvasTexture('garage-back', 512, 512, (g, w, h, rng) => garageWall(g, w, h, rng, '#b9c6cf')) },
+  // Diagonal yellow/black stripes for the box opening (jambs and header).
+  jamb: { tile: [0.5, 0.5], make: () => canvasTexture('jamb', 256, 256, (g, w, h) => {
     g.fillStyle = '#f2c200';
-    g.fillRect(0, y0, w, y1 - y0);
+    g.fillRect(0, 0, w, h);
     g.fillStyle = '#1c1c1c';
-    for (let x = -h; x < w + h; x += 64) {
+    for (let x = -w; x < 2 * w; x += 128) {
       g.beginPath();
-      g.moveTo(x, y1); g.lineTo(x + 32, y1); g.lineTo(x + 32 + (y1 - y0), y0); g.lineTo(x + (y1 - y0), y0);
+      g.moveTo(x, h); g.lineTo(x + 64, h); g.lineTo(x + 64 + h, 0); g.lineTo(x + h, 0);
       g.fill();
     }
-    g.restore();
-    g.fillStyle = 'rgba(70,70,70,0.35)';
-    g.fillRect(0, h * (1 - 0.12 / 2.4), w, h);
   }) },
   door: { tile: [3, 2.4], make: () => canvasTexture('door', 256, 256, (g, w, h) => {
     g.fillStyle = '#7d8790';
@@ -125,11 +143,19 @@ const KINDS = {
   }) },
 };
 
+// Surfaces that also get relief from their own pattern (joints read as grooves).
+const BUMPY = { brick: 3, garage: 2, 'garage-back': 2, door: 2, sidewalk: 1.5 };
+
 // Material whose texture repeats once per real-world tile on a surface of size u × v metres.
 export function texturedMaterial(kind, u, v, color = 0xffffff) {
   const k = KINDS[kind];
   const map = k.make().clone();
   map.repeat.set(u / k.tile[0], v / k.tile[1]);
   map.needsUpdate = true;
-  return new THREE.MeshStandardMaterial({ map, color, roughness: 0.95 });
+  const material = new THREE.MeshStandardMaterial({ map, color, roughness: 0.95 });
+  if (BUMPY[kind]) {
+    material.bumpMap = map;
+    material.bumpScale = BUMPY[kind];
+  }
+  return material;
 }

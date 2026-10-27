@@ -7,6 +7,6 @@
   "scripts": {
     "test": "node --test",
     "test:levels": "node --test slow-tests/levels-feasible.js",
-    "start": "python3 -m http.server 8080"
+    "start": "python3 serve.py 8080"
   }
 }

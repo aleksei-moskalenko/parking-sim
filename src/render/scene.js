@@ -65,6 +65,7 @@ function wallMaterial(o) {
   const along = Math.max(o.rect.length, o.rect.width);
   switch (o.look) {
     case 'garage': return texturedMaterial('garage', along, o.height);
+    case 'garage-back': return texturedMaterial('garage-back', along, o.height);
     case 'door': return texturedMaterial('door', along, o.height);
     case 'fence': return texturedMaterial('fence', along, o.height);
     default: return texturedMaterial('brick', along, o.height);
@@ -93,6 +94,25 @@ function laneLine(world) {
   return group;
 }
 
+// Striped jambs and header around the target box opening, a lamp inside.
+// The jambs sit inside the side walls (3 mm proud only to avoid flicker).
+function garageFrames(frames, target) {
+  const group = new THREE.Group();
+  for (const j of frames.jambs) {
+    group.add(slab({ ...j, length: j.length + 0.006, width: j.width + 0.006 }, 2.4, texturedMaterial('jamb', Math.max(j.length, j.width), 2.4)));
+  }
+  const h = frames.header;
+  group.add(slab({ ...h, width: h.width + 0.006 }, h.height, texturedMaterial('jamb', h.length, h.height), h.z0));
+
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.12), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1d6, emissiveIntensity: 2 }));
+  placeOnGround(lamp, { ...target, heading: 0 }, 2.3);
+  setLayer(lamp, LAYER.roof);
+  const light = new THREE.PointLight(0xfff1d6, 10, 9, 2);
+  light.position.set(target.cx, 2.2, -target.cy);
+  group.add(lamp, light);
+  return group;
+}
+
 export function buildEnvironment(world, models) {
   const env = new THREE.Group();
   const b = world.bounds;
@@ -114,6 +134,8 @@ export function buildEnvironment(world, models) {
     // Roofs are hidden from the top view so the box interior stays visible.
     env.add(setLayer(roof, LAYER.roof));
   }
+
+  if (world.decor.frames) env.add(garageFrames(world.decor.frames, world.target));
 
   let carIndex = 0;
   for (const o of world.obstacles) {

@@ -7,7 +7,7 @@
 ## Запуск
 
 ```bash
-npm start            # python3 -m http.server 8080
+npm start            # python3 serve.py 8080 — статика без кэширования
 ```
 
 Откройте http://localhost:8080. Чтобы сразу начать конкретный заезд:
